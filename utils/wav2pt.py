@@ -8,7 +8,7 @@ import multiprocessing as mp
 
 def wav2pt(wav):
     y,_ = rosa.load(wav, sr = hparams.audio.sr, mono = True)
-    y,_ = rosa.effects.trim(y, 15)
+    y,_ = rosa.effects.trim(y, top_db=15)
     pt_name = os.path.splitext(wav)[0]+'.pt'
     pt = torch.tensor(y)
     torch.save(pt ,pt_name)
