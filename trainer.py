@@ -1,6 +1,6 @@
 """xvdp modified for pytorch_lighting 1.4
 pytorch_lighting contains more deprecations than (metaphorical expletive)
-(#5321) (#6162) (#11578)
+(#5321) (#6162) (#11578) (#9754)
 """
 import os
 import argparse
@@ -19,8 +19,7 @@ from utils.tblogger import TensorBoardLoggerExpanded
 
 # Other DDPM/Score-based model applied EMA
 # In our works, there are no significant difference
-# Deprecated Callback.on_epoch_end hook in favour of
-#   Callback.on_{train/val/test}_epoch_end (#11578)
+# Deprecated Callback.on_epoch_end hook in favour of Callback.on_{train/val/test}_epoch_end (#11578)
 
 class EMACallback(Callback):
     def __init__(self, filepath, alpha=0.999, k=3):
@@ -118,10 +117,11 @@ def train(args):
 
     # pytorch_lightning.utilities.exceptions.MisconfigurationException:
     # Invalid type provided for checkpoint_callback:
-    # Expected bool but received <class 'pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint'>. 
+    # Expected bool but received <class 'pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint'>.
     # Pass callback instances to the `callbacks` argument in the Trainer constructor instead.
+    # (#9754) Deprecate checkpoint_callback from the Trainer constructor in favour of enable_checkpointing
     trainer = Trainer(
-        checkpoint_callback=True,#checkpoint_callback,
+        checkpoint_callback=True,
         gpus=hparams.train.gpus,
         accelerator='ddp' if hparams.train.gpus > 1 else None,
         #plugins='ddp_sharded',
@@ -134,8 +134,9 @@ def train(args):
         logger=tblogger,
         progress_bar_refresh_rate=4,
         callbacks=[
-            EMACallback(os.path.join(hparams.log.checkpoint_dir, 
-                        f'{hparams.name}_epoch={{epoch}}_EMA'))
+            EMACallback(os.path.join(hparams.log.checkpoint_dir,
+                        f'{hparams.name}_epoch={{epoch}}_EMA')),
+                        checkpoint_callback
                   ],
         resume_from_checkpoint=None
         if args.resume_from == None or args.restart else sorted(

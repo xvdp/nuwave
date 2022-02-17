@@ -6,6 +6,7 @@ import librosa as rosa
 from omegaconf import OmegaConf as OC
 from tqdm import tqdm
 
+# pylint: disable=no-member
 def wav2pt(wav):
     y,_ = rosa.load(wav, sr=hparams.audio.sr, mono=True)
     y,_ = rosa.effects.trim(y, top_db=15)

@@ -4,14 +4,15 @@
 #https://github.com/lucidrains/denoising-diffusion-pytorch
 #https://github.com/hojonathanho/diffusion
 
+from math import sqrt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from math import sqrt
 
 Linear = nn.Linear
 silu = F.silu
 
+# pylint: disable=no-member
 def Conv1d(*args, **kwargs):
     layer = nn.Conv1d(*args, **kwargs)
     nn.init.kaiming_normal_(layer.weight)

@@ -12,13 +12,13 @@ def test(args):
     hparams = OC.load('hparameter.yaml')
     hparams.save = args.save or False
     model = NuWave(hparams, False)
-    
+
     if args.ema:
         ckpt_path = glob(os.path.join(hparams.log.checkpoint_dir,
                          f'*_epoch={args.resume_from}_EMA'))[-1]
         ckpt = torch.load(ckpt_path)
         model.load_state_dict(ckpt)
-                         
+
     else:
         ckpt_path = glob(os.path.join(hparams.log.checkpoint_dir,
                          f'*_epoch={args.resume_from}.ckpt'))[-1]
