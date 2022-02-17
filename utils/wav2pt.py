@@ -22,3 +22,11 @@ if __name__=='__main__':
     with tqdm(total = len(wavs)) as pbar:
         for _ in tqdm(pool.imap_unordered(wav2pt, wavs)):
             pbar.update()
+
+"""
+NOTE: mp error after conversion
+Traceback (most recent call last):
+  File "/home/z/miniconda3/envs/abj/lib/python3.9/multiprocessing/pool.py", line 268, in __del__
+  File "/home/z/miniconda3/envs/abj/lib/python3.9/multiprocessing/queues.py", line 372, in put
+AttributeError: 'NoneType' object has no attribute 'dumps'
+"""

@@ -1,19 +1,27 @@
-from lightning_model import NuWave
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
-from omegaconf import OmegaConf as OC
+"""xvdp modified for pytorch_lighting 1.4
+pytorch_lighting contains more deprecations than (metaphorical expletive)
+(#5321) (#6162) (#11578)
+"""
 import os
 import argparse
 import datetime
 from glob import glob
-from pytorch_lightning.callbacks.base import Callback
-import torch
-from pytorch_lightning.utilities import rank_zero_only
 from copy import deepcopy
+import torch
+from lightning_model import NuWave
+from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks.base import Callback
+from pytorch_lightning.utilities import rank_zero_only
+from omegaconf import OmegaConf as OC
 from utils.tblogger import TensorBoardLoggerExpanded
+
 
 # Other DDPM/Score-based model applied EMA
 # In our works, there are no significant difference
+# Deprecated Callback.on_epoch_end hook in favour of
+#   Callback.on_{train/val/test}_epoch_end (#11578)
+
 class EMACallback(Callback):
     def __init__(self, filepath, alpha=0.999, k=3):
         super().__init__()
@@ -36,7 +44,7 @@ class EMACallback(Callback):
             self.last_parameters = deepcopy(pl_module.state_dict())
 
     @rank_zero_only
-    def on_train_batch_end(self, trainer, pl_module,outputs, batch, batch_idx,dataloader_idx):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx,dataloader_idx):
         self.current_parameters = deepcopy(pl_module.state_dict())
         for k, v in self.current_parameters.items():
             self.current_parameters[k].copy_(self.alpha * v +
@@ -46,7 +54,7 @@ class EMACallback(Callback):
         return
 
     @rank_zero_only
-    def on_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(self, trainer, pl_module):
         self.queue.append(trainer.current_epoch)
         torch.save(self.current_parameters,
                    self.filepath.format(epoch=trainer.current_epoch))
@@ -67,14 +75,22 @@ def train(args):
     model = NuWave(hparams)
     tblogger = TensorBoardLoggerExpanded(hparams)
     ckpt_path = f'{hparams.log.name}_{now}_{{epoch}}'
-    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(
-        hparams.log.checkpoint_dir, ckpt_path),
+    print(hparams.log.checkpoint_dir, ckpt_path)
+
+    # note on pytorch_lightning.__version__ '1.1.6'
+    # .. warning:: .. deprecated:: 1.0
+    #       Use ``dirpath`` + ``filename`` instead. Will be removed in v1.2
+    # changed
+    # prefix: A string to put at the beginning of checkpoint filename.
+    # Removed deprecated checkpoint argument filepath (#5321)
+    # Removed deprecated ModelCheckpoint arguments prefix, mode="auto" (#6162)
+    checkpoint_callback = ModelCheckpoint(dirpath=hparams.log.checkpoint_dir,
+                                          filename=ckpt_path,
                                           verbose=True,
                                           save_last=True,
                                           save_top_k=3,
                                           monitor='val_loss',
-                                          mode='min',
-                                          prefix='')
+                                          mode='min')
 
     if args.restart:
         ckpt = torch.load(glob(
@@ -100,9 +116,12 @@ def train(args):
                     sd[k].copy_(ckpt[k])
         args.resume_from = None
 
-
+    # pytorch_lightning.utilities.exceptions.MisconfigurationException:
+    # Invalid type provided for checkpoint_callback:
+    # Expected bool but received <class 'pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint'>. 
+    # Pass callback instances to the `callbacks` argument in the Trainer constructor instead.
     trainer = Trainer(
-        checkpoint_callback=checkpoint_callback,
+        checkpoint_callback=True,#checkpoint_callback,
         gpus=hparams.train.gpus,
         accelerator='ddp' if hparams.train.gpus > 1 else None,
         #plugins='ddp_sharded',
